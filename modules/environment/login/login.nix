@@ -5,11 +5,10 @@
 
 let
   inherit (config.build) installationDir;
-  
+
   # Paths for fakechroot login
   androidGlibc = config.build.androidGlibc or null;
   androidFakechroot = config.build.androidFakechroot or null;
-  packAuditLib = config.build.packAuditLib or null;
   bashInteractive = config.build.bashInteractive or null;
 in
 
@@ -35,16 +34,16 @@ writeScript "login" ''
   fi
 
   # Fakechroot configuration
+  # Note: /nix/store path translation is now built into ld.so (dl-android-paths.h)
+  # No longer need pack-audit.so for LD_AUDIT path redirection
   STORE="${installationDir}/nix/store"
   LD_LINUX="$STORE/${baseNameOf androidGlibc}/lib/ld-linux-aarch64.so.1"
   BASH_BIN="$STORE/${baseNameOf bashInteractive}/bin/bash"
   FAKECHROOT_LIB="$STORE/${baseNameOf androidFakechroot}/lib/fakechroot/libfakechroot.so"
-  # pack-audit.so is in nix store, add installationDir prefix for outside-proot access
-  AUDIT_LIB="${installationDir}${packAuditLib}"
   LOGIN_INNER="${installationDir}/usr/lib/login-inner"
 
   # Verify critical files exist
-  for _file in "$LD_LINUX" "$BASH_BIN" "$FAKECHROOT_LIB" "$AUDIT_LIB" "$LOGIN_INNER"; do
+  for _file in "$LD_LINUX" "$BASH_BIN" "$FAKECHROOT_LIB" "$LOGIN_INNER"; do
     if [ ! -e "$_file" ]; then
       echo "Error: Required file not found: $_file" >&2
       exit 1
@@ -54,8 +53,6 @@ writeScript "login" ''
   # Execute using Android glibc's ld.so
   # NOTE: We use /system/bin/env to explicitly pass environment variables because
   # Android's /system/bin/sh doesn't properly pass exported variables to exec'd processes.
-  # pack-audit.so has all paths hardcoded at compile time, so we only need to pass
-  # environment variables that fakechroot needs for child process handling.
   #
   # FAKECHROOT_EXCLUDE_PATH: Paths that should NOT be translated (accessed directly).
   # This includes Android system paths and the nix-on-droid installation directory itself.
@@ -67,12 +64,10 @@ writeScript "login" ''
     FAKECHROOT_BASE="${installationDir}" \
     FAKECHROOT_ELFLOADER="$LD_LINUX" \
     FAKECHROOT_ELFLOADER_OPT_ARGV0="--argv0" \
-    FAKECHROOT_ELFLOADER_OPT_AUDIT="$AUDIT_LIB" \
     FAKECHROOT_ELFLOADER_OPT_PRELOAD="$FAKECHROOT_LIB" \
     FAKECHROOT_EXCLUDE_PATH="/data:/proc:/sys:/dev:/system:/apex:/vendor:/linkerconfig" \
     "$LD_LINUX" \
       --argv0 "$BASH_BIN" \
-      --audit "$AUDIT_LIB" \
       --preload "$FAKECHROOT_LIB" \
       "$BASH_BIN" "$LOGIN_INNER" "$@"
 ''

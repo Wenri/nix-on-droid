@@ -54,11 +54,7 @@ with lib;
         description = "Android-patched fakechroot package.";
       };
 
-      packAuditLib = mkOption {
-        type = types.nullOr types.path;
-        default = null;
-        description = "Path to pack-audit.so library for glibc redirection.";
-      };
+      # Note: packAuditLib removed - path translation now built into ld.so
 
       bashInteractive = mkOption {
         type = types.nullOr types.package;
