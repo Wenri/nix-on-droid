@@ -29,6 +29,17 @@ with lib;
         description = "Path to installation directory.";
       };
 
+      absoluteStorePrefix = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+        description = ''
+          Prefix to prepend to /nix/store paths for absolute symlink rewriting.
+          When set, symlinks in the user environment will be rewritten to use
+          absolute paths with this prefix, allowing access from outside proot.
+          Typically set to the installation directory.
+        '';
+      };
+
       extraProotOptions = mkOption {
         type = types.listOf types.str;
         default = [ ];
