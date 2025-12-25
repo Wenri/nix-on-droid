@@ -110,12 +110,77 @@ in
         '';
       };
 
-      activationAfter.homeManager = concatStringsSep " " (
-        optional
-          (cfg.backupFileExtension != null)
-          "HOME_MANAGER_BACKUP_EXT='${cfg.backupFileExtension}'"
-        ++ [ "${cfg.config.home.activationPackage}/activate" ]
-      );
+      activationAfter = {
+        homeManager = concatStringsSep " " (
+          optional
+            (cfg.backupFileExtension != null)
+            "HOME_MANAGER_BACKUP_EXT='${cfg.backupFileExtension}'"
+          ++ [ "${cfg.config.home.activationPackage}/activate" ]
+        );
+      } // optionalAttrs (config.build.absoluteStorePrefix != null) {
+        # Rewrite home-manager symlinks to use absolute store prefix
+        rewriteHomeManagerSymlinks = ''
+          noteEcho "Rewriting home-manager symlinks to use absolute paths"
+          prefix="${config.build.absoluteStorePrefix}"
+          
+          # Rewrite symlinks in home directory (top level only)
+          # This includes both /nix/store/* and /nix/var/* symlinks (like .nix-profile)
+          find "$HOME" -maxdepth 1 -type l 2>/dev/null | while read -r link; do
+            target=$(readlink "$link")
+            if [[ "$target" == /nix/store/* ]] || [[ "$target" == /nix/var/* ]]; then
+              $VERBOSE_ECHO "Rewriting: $link"
+              $DRY_RUN_CMD rm "$link"
+              $DRY_RUN_CMD ln -s "$prefix$target" "$link"
+            fi
+          done || true
+          
+          # Rewrite symlinks in .config
+          if [[ -d "$HOME/.config" ]]; then
+            find "$HOME/.config" -type l 2>/dev/null | while read -r link; do
+              target=$(readlink "$link")
+              if [[ "$target" == /nix/store/* ]]; then
+                $VERBOSE_ECHO "Rewriting: $link"
+                $DRY_RUN_CMD rm "$link"
+                $DRY_RUN_CMD ln -s "$prefix$target" "$link"
+              fi
+            done || true
+          fi
+          
+          # Rewrite symlinks in .local, but exclude gcroots (managed by nix-store)
+          if [[ -d "$HOME/.local" ]]; then
+            find "$HOME/.local" -type l -not -path "*/gcroots/*" 2>/dev/null | while read -r link; do
+              target=$(readlink "$link")
+              if [[ "$target" == /nix/store/* ]]; then
+                $VERBOSE_ECHO "Rewriting: $link"
+                $DRY_RUN_CMD rm "$link"
+                $DRY_RUN_CMD ln -s "$prefix$target" "$link"
+              fi
+            done || true
+          fi
+          
+          # Rewrite per-user profile symlinks
+          find /nix/var/nix/profiles/per-user -type l 2>/dev/null | while read -r link; do
+            target=$(readlink "$link")
+            if [[ "$target" == /nix/store/* ]]; then
+              $VERBOSE_ECHO "Rewriting profile: $link"
+              $DRY_RUN_CMD rm "$link"
+              $DRY_RUN_CMD ln -s "$prefix$target" "$link"
+            fi
+          done || true
+          
+          # Rewrite nix-on-droid profile symlinks
+          for link in /nix/var/nix/profiles/nix-on-droid /nix/var/nix/profiles/nix-on-droid-*-link; do
+            if [[ -L "$link" ]]; then
+              target=$(readlink "$link")
+              if [[ "$target" == /nix/store/* ]]; then
+                $VERBOSE_ECHO "Rewriting: $link"
+                $DRY_RUN_CMD rm "$link"
+                $DRY_RUN_CMD ln -s "$prefix$target" "$link"
+              fi
+            fi
+          done || true
+        '';
+      };
     };
 
     environment.packages = mkIf cfg.useUserPackages cfg.config.home.packages;
