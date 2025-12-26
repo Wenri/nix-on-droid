@@ -34,10 +34,12 @@ writeScript "login" ''
   fi
 
   # Fakechroot configuration
-  # Note: /nix/store path translation is now built into ld.so (dl-android-paths.h)
-  # No longer need pack-audit.so for LD_AUDIT path redirection
+  # Android paths are now hardcoded into libfakechroot.so at compile time.
+  # We only need to set FAKECHROOT_BASE for path translation.
+  # Note: /nix/store path translation is built into ld.so (dl-android-paths.h)
   STORE="${installationDir}/nix/store"
-  LD_LINUX="$STORE/${baseNameOf androidGlibc}/lib/ld-linux-aarch64.so.1"
+  GLIBC_LIB="$STORE/${baseNameOf androidGlibc}/lib"
+  LD_LINUX="$GLIBC_LIB/ld-linux-aarch64.so.1"
   BASH_BIN="$STORE/${baseNameOf bashInteractive}/bin/bash"
   FAKECHROOT_LIB="$STORE/${baseNameOf androidFakechroot}/lib/fakechroot/libfakechroot.so"
   LOGIN_INNER="${installationDir}/usr/lib/login-inner"
@@ -54,20 +56,21 @@ writeScript "login" ''
   # NOTE: We use /system/bin/env to explicitly pass environment variables because
   # Android's /system/bin/sh doesn't properly pass exported variables to exec'd processes.
   #
-  # FAKECHROOT_EXCLUDE_PATH: Paths that should NOT be translated (accessed directly).
-  # This includes Android system paths and the nix-on-droid installation directory itself.
-  # All other absolute paths will have FAKECHROOT_BASE prepended.
+  # FAKECHROOT_BASE: Base path for fakechroot path translation
+  # FAKECHROOT_EXCLUDE_PATH: Paths that should NOT be translated (accessed directly)
+  # FAKECHROOT_ELFLOADER_OPT_PRELOAD: Path to libfakechroot.so (needed for child processes)
+  #
+  # ELFLOADER and LIBRARY_PATH are hardcoded in libfakechroot.so at compile time.
   exec /system/bin/env \
     USER="$USER" \
     HOME="$HOME" \
     FAKECHROOT="true" \
     FAKECHROOT_BASE="${installationDir}" \
-    FAKECHROOT_ELFLOADER="$LD_LINUX" \
-    FAKECHROOT_ELFLOADER_OPT_ARGV0="--argv0" \
     FAKECHROOT_ELFLOADER_OPT_PRELOAD="$FAKECHROOT_LIB" \
     FAKECHROOT_EXCLUDE_PATH="/data:/proc:/sys:/dev:/system:/apex:/vendor:/linkerconfig" \
     "$LD_LINUX" \
       --argv0 "$BASH_BIN" \
+      --library-path "$GLIBC_LIB" \
       --preload "$FAKECHROOT_LIB" \
       "$BASH_BIN" "$LOGIN_INNER" "$@"
 ''
