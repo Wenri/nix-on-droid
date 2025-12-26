@@ -56,18 +56,13 @@ writeScript "login" ''
   # NOTE: We use /system/bin/env to explicitly pass environment variables because
   # Android's /system/bin/sh doesn't properly pass exported variables to exec'd processes.
   #
-  # FAKECHROOT_BASE: Base path for fakechroot path translation
-  # FAKECHROOT_EXCLUDE_PATH: Paths that should NOT be translated (accessed directly)
-  # FAKECHROOT_ELFLOADER_OPT_PRELOAD: Path to libfakechroot.so (needed for child processes)
-  #
-  # ELFLOADER and LIBRARY_PATH are hardcoded in libfakechroot.so at compile time.
+  # All FAKECHROOT_* settings (ELFLOADER, LIBRARY_PATH, PRELOAD, BASE, EXCLUDE_PATH)
+  # are now hardcoded into libfakechroot.so at compile time.
+  # Only FAKECHROOT=true is needed to enable fakechroot mode.
   exec /system/bin/env \
     USER="$USER" \
     HOME="$HOME" \
     FAKECHROOT="true" \
-    FAKECHROOT_BASE="${installationDir}" \
-    FAKECHROOT_ELFLOADER_OPT_PRELOAD="$FAKECHROOT_LIB" \
-    FAKECHROOT_EXCLUDE_PATH="/data:/proc:/sys:/dev:/system:/apex:/vendor:/linkerconfig" \
     "$LD_LINUX" \
       --argv0 "$BASH_BIN" \
       --library-path "$GLIBC_LIB" \
