@@ -9,18 +9,29 @@ let
 
   profileDirectory = "/nix/var/nix/profiles/nix-on-droid";
 
+  # Helper to optionally patch packages for Android glibc
+  patchPkg = pkg:
+    if cfg.patchPackageForAndroidGlibc != null
+    then cfg.patchPackageForAndroidGlibc pkg
+    else pkg;
+
   # Programs that always should be available on the activation
   # script's PATH.
+  # When patchPackageForAndroidGlibc is set, all packages are patched
+  # to use the Android glibc with absolute paths.
   activationBinPaths = lib.makeBinPath [
-    pkgs.bash
-    pkgs.coreutils
-    pkgs.diffutils
-    pkgs.findutils
-    pkgs.gnugrep
-    pkgs.gnused
-    pkgs.ncurses # For `tput`.
-    config.nix.package
+    (patchPkg pkgs.bash)
+    (patchPkg pkgs.coreutils)
+    (patchPkg pkgs.diffutils)
+    (patchPkg pkgs.findutils)
+    (patchPkg pkgs.gnugrep)
+    (patchPkg pkgs.gnused)
+    (patchPkg pkgs.ncurses) # For `tput`.
+    (patchPkg config.nix.package)
   ];
+
+  # Shell for the activation script shebang
+  activationShell = patchPkg pkgs.bash;
 
   mkActivationCmds = activation: concatStringsSep "\n" (
     mapAttrsToList
@@ -32,7 +43,7 @@ let
   );
 
   activationScript = pkgs.writeScript "activation-script" ''
-    #!${pkgs.runtimeShell}
+    #!${activationShell}/bin/bash
 
     set -eu
     set -o pipefail
@@ -143,7 +154,13 @@ in
         if [[ $generationDir =~ ^${profileDirectory}-([0-9]+)-link$ ]]; then
           $DRY_RUN_CMD nix-env --profile "${profileDirectory}" --switch-generation "''${BASH_REMATCH[1]}"
         else
-          $DRY_RUN_CMD nix-env --profile "${profileDirectory}" --set "$_NOD_GENERATION_DIR"
+          # Strip Android prefix if present - nix-env expects /nix/store paths
+          nixStorePath="$_NOD_GENERATION_DIR"
+          androidPrefix="${config.build.installationDir}"
+          if [[ "$nixStorePath" == "$androidPrefix"* ]]; then
+            nixStorePath="''${nixStorePath#$androidPrefix}"
+          fi
+          $DRY_RUN_CMD nix-env --profile "${profileDirectory}" --set "$nixStorePath"
         fi
       '';
 
