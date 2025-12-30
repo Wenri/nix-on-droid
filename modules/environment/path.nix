@@ -9,8 +9,10 @@ let
   buildCfg = config.build;
 
   # Patch all packages for Android glibc if patchPackageForAndroidGlibc is set
+  # Skip packages that have passthru.skipAndroidGlibcPatch = true (e.g., Go binaries)
   patchPkg = pkg:
     if buildCfg.patchPackageForAndroidGlibc != null
+       && !(pkg.passthru.skipAndroidGlibcPatch or false)
     then buildCfg.patchPackageForAndroidGlibc pkg
     else pkg;
   
