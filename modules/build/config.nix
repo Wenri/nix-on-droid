@@ -63,7 +63,19 @@ with lib;
           Function to patch a package for Android glibc compatibility.
           Takes a package and returns a patched package with rewritten
           interpreter and RPATH to use the Android glibc prefix.
-          When set, all environment.packages will be automatically patched.
+          (Legacy: use replaceAndroidDependencies for better dependency handling)
+        '';
+      };
+
+      replaceAndroidDependencies = mkOption {
+        type = types.nullOr (types.functionTo types.package);
+        default = null;
+        description = ''
+          Function to patch an entire derivation for Android glibc compatibility.
+          Like NixOS replaceDependencies but uses patchelf (no path length constraint).
+          Takes a derivation (e.g., buildEnv output) and returns a patched derivation
+          with all ELF binaries and scripts rewritten for Android glibc.
+          Applied to final environment.path for transitive dependency patching.
         '';
       };
     };

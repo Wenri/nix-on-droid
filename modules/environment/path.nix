@@ -15,9 +15,35 @@ let
        && !(pkg.passthru.skipAndroidGlibcPatch or false)
     then buildCfg.patchPackageForAndroidGlibc pkg
     else pkg;
-  
+
   # Apply patching to all packages
   patchedPackages = map patchPkg cfg.packages;
+
+  # Build the base environment with all packages (unpatched)
+  baseEnv = pkgs.buildEnv {
+    name = "nix-on-droid-path";
+    paths = cfg.packages;
+    inherit (cfg) extraOutputsToInstall;
+    meta = {
+      description = "Environment of packages installed through Nix-on-Droid.";
+    };
+  };
+
+  # Option 1: Per-package patching (current default)
+  # Option 2: Environment-level patching with replaceAndroidDependencies
+  patchedEnv =
+    if buildCfg.replaceAndroidDependencies != null
+    then buildCfg.replaceAndroidDependencies baseEnv
+    else if buildCfg.patchPackageForAndroidGlibc != null
+    then pkgs.buildEnv {
+      name = "nix-on-droid-path";
+      paths = patchedPackages;
+      inherit (cfg) extraOutputsToInstall;
+      meta = {
+        description = "Environment of packages installed through Nix-on-Droid.";
+      };
+    }
+    else baseEnv;
 in
 
 {
@@ -62,10 +88,13 @@ in
 
         nix_previous="$(command -v nix)"
 
-        nix profile list \
-          | grep 'nix-on-droid-path$' \
-          | cut -d ' ' -f 4 \
-          | xargs -t $DRY_RUN_CMD nix profile remove $VERBOSE_ARG
+        # Remove both nix-on-droid-path and nix-on-droid-path-android by name
+        # The new nix profile list format shows "Name: <name>" on its own line
+        for pkg in nix-on-droid-path nix-on-droid-path-android; do
+          if $nix_previous profile list 2>/dev/null | grep -q "^Name:.*$pkg"; then
+            $DRY_RUN_CMD $nix_previous profile remove "$pkg" $VERBOSE_ARG || true
+          fi
+        done
 
         $DRY_RUN_CMD $nix_previous profile install ${cfg.path}
 
@@ -85,18 +114,8 @@ in
         config.nix.package
       ];
 
-      path = pkgs.buildEnv {
-        name = "nix-on-droid-path";
-
-        # Use patched packages when patchPackageForAndroidGlibc is configured
-        paths = patchedPackages;
-
-        inherit (cfg) extraOutputsToInstall;
-
-        meta = {
-          description = "Environment of packages installed through Nix-on-Droid.";
-        };
-      };
+      # Use patched environment when replaceAndroidDependencies is configured
+      path = patchedEnv;
     };
 
   };
