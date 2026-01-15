@@ -9,29 +9,31 @@ let
 
   profileDirectory = "/nix/var/nix/profiles/nix-on-droid";
 
-  # Helper to optionally patch packages for Android glibc
-  patchPkg = pkg:
-    if cfg.patchPackageForAndroidGlibc != null
-    then cfg.patchPackageForAndroidGlibc pkg
-    else pkg;
-
-  # Programs that always should be available on the activation
-  # script's PATH.
-  # When patchPackageForAndroidGlibc is set, all packages are patched
-  # to use the Android glibc with absolute paths.
-  activationBinPaths = lib.makeBinPath [
-    (patchPkg pkgs.bash)
-    (patchPkg pkgs.coreutils)
-    (patchPkg pkgs.diffutils)
-    (patchPkg pkgs.findutils)
-    (patchPkg pkgs.gnugrep)
-    (patchPkg pkgs.gnused)
-    (patchPkg pkgs.ncurses) # For `tput`.
-    (patchPkg config.nix.package)
+  # Programs that always should be available on the activation script's PATH.
+  activationPackages = [
+    pkgs.bash
+    pkgs.coreutils
+    pkgs.diffutils
+    pkgs.findutils
+    pkgs.gnugrep
+    pkgs.gnused
+    pkgs.ncurses # For `tput`.
+    config.nix.package
   ];
 
-  # Shell for the activation script shebang
-  activationShell = patchPkg pkgs.bash;
+  # Build environment with all activation packages
+  activationEnv = pkgs.buildEnv {
+    name = "nix-on-droid-activation-env";
+    paths = activationPackages;
+  };
+
+  # Apply Android glibc patching if replaceAndroidDependencies is configured
+  patchedActivationEnv =
+    if cfg.replaceAndroidDependencies != null
+    then cfg.replaceAndroidDependencies activationEnv
+    else activationEnv;
+
+  activationBinPaths = "${patchedActivationEnv}/bin";
 
   mkActivationCmds = activation: concatStringsSep "\n" (
     mapAttrsToList
@@ -42,8 +44,9 @@ let
       activation
   );
 
+  # Use bash from the patched activation environment
   activationScript = pkgs.writeScript "activation-script" ''
-    #!${activationShell}/bin/bash
+    #!${patchedActivationEnv}/bin/bash
 
     set -eu
     set -o pipefail

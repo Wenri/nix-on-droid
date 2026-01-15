@@ -8,17 +8,6 @@ let
   cfg = config.environment;
   buildCfg = config.build;
 
-  # Patch all packages for Android glibc if patchPackageForAndroidGlibc is set
-  # Skip packages that have passthru.skipAndroidGlibcPatch = true (e.g., Go binaries)
-  patchPkg = pkg:
-    if buildCfg.patchPackageForAndroidGlibc != null
-       && !(pkg.passthru.skipAndroidGlibcPatch or false)
-    then buildCfg.patchPackageForAndroidGlibc pkg
-    else pkg;
-
-  # Apply patching to all packages
-  patchedPackages = map patchPkg cfg.packages;
-
   # Build the base environment with all packages (unpatched)
   baseEnv = pkgs.buildEnv {
     name = "nix-on-droid-path";
@@ -29,20 +18,11 @@ let
     };
   };
 
-  # Option 1: Per-package patching (current default)
-  # Option 2: Environment-level patching with replaceAndroidDependencies
+  # Environment-level patching with replaceAndroidDependencies
+  # Patches entire environment at once for Android glibc compatibility
   patchedEnv =
     if buildCfg.replaceAndroidDependencies != null
     then buildCfg.replaceAndroidDependencies baseEnv
-    else if buildCfg.patchPackageForAndroidGlibc != null
-    then pkgs.buildEnv {
-      name = "nix-on-droid-path";
-      paths = patchedPackages;
-      inherit (cfg) extraOutputsToInstall;
-      meta = {
-        description = "Environment of packages installed through Nix-on-Droid.";
-      };
-    }
     else baseEnv;
 in
 

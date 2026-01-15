@@ -53,18 +53,7 @@ with lib;
       bashInteractive = mkOption {
         type = types.nullOr types.package;
         default = null;
-        description = "Bash interactive package for login shell.";
-      };
-
-      patchPackageForAndroidGlibc = mkOption {
-        type = types.nullOr (types.functionTo types.package);
-        default = null;
-        description = ''
-          Function to patch a package for Android glibc compatibility.
-          Takes a package and returns a patched package with rewritten
-          interpreter and RPATH to use the Android glibc prefix.
-          (Legacy: use replaceAndroidDependencies for better dependency handling)
-        '';
+        description = "Patched environment containing bash for login shell.";
       };
 
       replaceAndroidDependencies = mkOption {
@@ -87,6 +76,8 @@ with lib;
 
   config = {
 
+    # Canonical source of truth for nix-on-droid installation directory
+    # Other modules should use config.build.installationDir
     build.installationDir = "/data/data/com.termux.nix/files/usr";
 
   };

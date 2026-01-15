@@ -6,6 +6,8 @@ with lib;
 
 let
   cfg = config.user;
+  # Derive home directory from installation directory (remove /usr suffix and add /home)
+  termuxBase = builtins.dirOf config.build.installationDir;
 
   idsDerivation = pkgs.runCommandLocal "ids.nix" { } ''
     cat > $out <<EOF
@@ -90,7 +92,7 @@ in
     };
 
     user = {
-      home = "/data/data/com.termux.nix/files/home";
+      home = "${termuxBase}/home";
     };
 
   };
