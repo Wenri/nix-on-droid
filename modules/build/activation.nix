@@ -9,31 +9,10 @@ let
 
   profileDirectory = "/nix/var/nix/profiles/nix-on-droid";
 
-  # Programs that always should be available on the activation script's PATH.
-  activationPackages = [
-    pkgs.bash
-    pkgs.coreutils
-    pkgs.diffutils
-    pkgs.findutils
-    pkgs.gnugrep
-    pkgs.gnused
-    pkgs.ncurses # For `tput`.
-    config.nix.package
-  ];
-
-  # Build environment with all activation packages
-  activationEnv = pkgs.buildEnv {
-    name = "nix-on-droid-activation-env";
-    paths = activationPackages;
-  };
-
-  # Apply Android glibc patching if replaceAndroidDependencies is configured
-  patchedActivationEnv =
-    if cfg.replaceAndroidDependencies != null
-    then cfg.replaceAndroidDependencies activationEnv
-    else activationEnv;
-
-  activationBinPaths = "${patchedActivationEnv}/bin";
+  # Reuse environment.path which already contains all needed tools
+  # (bash, coreutils, diffutils, findutils, gnugrep, gnused, ncurses, nix)
+  # and is already patched for Android glibc via replaceAndroidDependencies
+  activationBinPaths = "${config.environment.path}/bin";
 
   mkActivationCmds = activation: concatStringsSep "\n" (
     mapAttrsToList
@@ -44,9 +23,9 @@ let
       activation
   );
 
-  # Use bash from the patched activation environment
+  # Use bash from the patched environment
   activationScript = pkgs.writeScript "activation-script" ''
-    #!${patchedActivationEnv}/bin/bash
+    #!${config.environment.path}/bin/bash
 
     set -eu
     set -o pipefail
