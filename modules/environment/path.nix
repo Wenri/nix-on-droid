@@ -91,10 +91,12 @@ in
         # Remove nix-on-droid-path and nix-on-droid-path-android packages
         # Package names may have numeric suffixes (e.g., nix-on-droid-path-android-1)
         # Collect all matching names first to avoid issues with profile renumbering
+        # Note: Strip ANSI color codes from nix profile list output
         pkgs_to_remove=""
         for pkg_prefix in nix-on-droid-path nix-on-droid-path-android; do
           # Find all packages starting with this prefix (handles -1, -2, etc. suffixes)
-          for full_name in $($nix_previous profile list 2>/dev/null | grep "^Name:" | sed 's/^Name:[[:space:]]*//'); do
+          # Use sed to strip ANSI escape codes (e.g., [1m, [0m) from colored output
+          for full_name in $($nix_previous profile list 2>/dev/null | sed 's/\x1B\[[0-9;]*m//g' | grep "^Name:" | sed 's/^Name:[[:space:]]*//'); do
             # Check if the name starts with our prefix
             # e.g., nix-on-droid-path-android-1 matches nix-on-droid-path-android
             if [[ "$full_name" == "$pkg_prefix" || "$full_name" == "$pkg_prefix"-[0-9]* ]]; then

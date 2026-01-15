@@ -108,7 +108,8 @@ in
           if [[ -e "${config.user.home}/.nix-profile/manifest.json" ]]; then
             # New nix profile format - priority is set at install time
             # Check if home-manager-path exists and needs priority adjustment
-            if nix profile list 2>/dev/null | grep -q "home-manager-path"; then
+            # Strip ANSI color codes from output before checking
+            if nix profile list 2>/dev/null | sed 's/\x1B\[[0-9;]*m//g' | grep -q "home-manager-path"; then
               # Note: nix profile doesn't support changing priority after install
               # Priority should be set during home-manager activation instead
               $VERBOSE_ECHO "home-manager-path found in nix profile (priority set at install time)"
