@@ -104,8 +104,20 @@ in
     build = {
       activationBefore = mkIf cfg.useUserPackages {
         setPriorityHomeManagerPath = ''
-          if nix-env -q | grep '^home-manager-path$'; then
-            $DRY_RUN_CMD nix-env $VERBOSE_ARG --set-flag priority 120 home-manager-path
+          # Check if using new nix profile format (manifest.json) or old nix-env format
+          if [[ -e "${config.user.home}/.nix-profile/manifest.json" ]]; then
+            # New nix profile format - priority is set at install time
+            # Check if home-manager-path exists and needs priority adjustment
+            if nix profile list 2>/dev/null | grep -q "home-manager-path"; then
+              # Note: nix profile doesn't support changing priority after install
+              # Priority should be set during home-manager activation instead
+              $VERBOSE_ECHO "home-manager-path found in nix profile (priority set at install time)"
+            fi
+          else
+            # Old nix-env format
+            if nix-env -q 2>/dev/null | grep -q '^home-manager-path$'; then
+              $DRY_RUN_CMD nix-env $VERBOSE_ARG --set-flag priority 120 home-manager-path
+            fi
           fi
         '';
       };
