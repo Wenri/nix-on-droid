@@ -20,9 +20,13 @@ let
 
   # Environment-level patching with replaceAndroidDependencies
   # Patches entire environment at once for Android glibc compatibility
+  # The addPrefixToPaths option patches additional paths (like /nix/var/) in script strings
   patchedEnv =
     if buildCfg.replaceAndroidDependencies != null
-    then buildCfg.replaceAndroidDependencies baseEnv
+    then buildCfg.replaceAndroidDependencies baseEnv {
+      # Patch /nix/var/ paths in script strings (e.g., nix.sh profile paths)
+      addPrefixToPaths = [ "/nix/var/" ];
+    }
     else baseEnv;
 in
 
