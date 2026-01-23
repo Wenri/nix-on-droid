@@ -57,14 +57,22 @@ with lib;
       };
 
       replaceAndroidDependencies = mkOption {
-        type = types.nullOr (types.functionTo types.package);
-        default = null;
+        type = types.functionTo (types.functionTo types.attrs);
         description = ''
           Function to patch an entire derivation for Android glibc compatibility.
           Like NixOS replaceDependencies but uses patchelf (no path length constraint).
-          Takes a derivation (e.g., buildEnv output) and returns a patched derivation
-          with all ELF binaries and scripts rewritten for Android glibc.
+          Takes a derivation and options, returns { out = patched-drv; memo = {...}; getPkg = fn; }.
           Applied to final environment.path for transitive dependency patching.
+        '';
+      };
+
+      patchedPkgs = mkOption {
+        type = types.attrs;
+        readOnly = true;
+        description = ''
+          pkgs with all packages mapped through replaceAndroidDependencies memo.
+          Use this for runtime packages that need Android patching.
+          Packages in the memo return their patched version; others return original.
         '';
       };
     };

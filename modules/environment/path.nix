@@ -21,13 +21,18 @@ let
   # Environment-level patching with replaceAndroidDependencies
   # Patches entire environment at once for Android glibc compatibility
   # The addPrefixToPaths option patches additional paths (like /nix/var/) in script strings
-  patchedEnv =
-    if buildCfg.replaceAndroidDependencies != null
-    then buildCfg.replaceAndroidDependencies baseEnv {
-      # Patch /nix/var/ paths in script strings (e.g., nix.sh profile paths)
-      addPrefixToPaths = [ "/nix/var/" ];
-    }
-    else baseEnv;
+  # Returns { out = patched-drv; memo = {...}; getPkg = fn; }
+  patchResult = buildCfg.replaceAndroidDependencies baseEnv {
+    # Patch /nix/var/ paths in script strings (e.g., nix.sh profile paths)
+    addPrefixToPaths = [ "/nix/var/" ];
+  };
+
+  patchedEnv = patchResult.out;
+
+  # Create patchedPkgs by mapping ALL pkgs through memo lookup
+  # - Packages in memo: returns patched version
+  # - Packages not in memo: returns original (lazy, only computed when accessed)
+  patchedPkgs = mapAttrs (_name: patchResult.getPkg) pkgs;
 in
 
 {
@@ -64,6 +69,9 @@ in
   ###### implementation
 
   config = {
+
+    # Expose patchedPkgs for other modules to use
+    build.patchedPkgs = patchedPkgs;
 
     build.activation.installPackages = ''
       if [[ -e "${config.user.home}/.nix-profile/manifest.json" ]]; then
@@ -112,6 +120,7 @@ in
         pkgs.bashInteractive
         pkgs.cacert
         pkgs.coreutils
+        pkgs.glibcLocales  # Needed for LOCALE_ARCHIVE, must be in memo for patchedPkgs
         pkgs.less # since nix tools really want a pager available, #27
         config.nix.package
       ];

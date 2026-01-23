@@ -50,8 +50,9 @@ in
     };
 
     environment = {
-      binSh = "${pkgs.bashInteractive}/bin/sh";
-      usrBinEnv = "${pkgs.coreutils}/bin/env";
+      # Use patchedPkgs to get the Android-patched versions from the memo
+      binSh = "${config.build.patchedPkgs.bashInteractive}/bin/sh";
+      usrBinEnv = "${config.build.patchedPkgs.coreutils}/bin/env";
     };
 
   };

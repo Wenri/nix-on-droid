@@ -125,6 +125,8 @@ in
         # To prevent gc warnings of nix, see https://github.com/NixOS/nix/issues/3237
         GC_NPROCS = 1;
         # Fix locale (perl apps panic without it)
+        # Note: The raw pkgs.glibcLocales path gets rewritten by patchnar via hash mapping
+        # when sessionInit is patched as part of environment.packages
         LOCALE_ARCHIVE = "${config.build.installationDir}${pkgs.glibcLocales}/lib/locale/locale-archive";
       };
     };
