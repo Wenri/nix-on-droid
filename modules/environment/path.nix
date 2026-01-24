@@ -20,11 +20,10 @@ let
 
   # Environment-level patching with replaceAndroidDependencies
   # Patches entire environment at once for Android glibc compatibility
-  # The addPrefixToPaths option patches additional paths (like /nix/var/) in script strings
+  # patchnar has /nix/var/ as a built-in default for addPrefixToPaths
   # Returns { out = patched-drv; memo = {...}; getPkg = fn; }
   patchResult = buildCfg.replaceAndroidDependencies baseEnv {
-    # Patch /nix/var/ paths in script strings (e.g., nix.sh profile paths)
-    addPrefixToPaths = [ "/nix/var/" ];
+    # Additional paths can be added here (patchnar defaults include /nix/var/)
   };
 
   patchedEnv = patchResult.out;
