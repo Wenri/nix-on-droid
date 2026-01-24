@@ -101,10 +101,10 @@ in
           $DRY_RUN_CMD $nix_previous profile remove $pkgs_to_remove $VERBOSE_ARG || true
         fi
 
-        # Only install if not already present (check by store path)
+        # Only add if not already present (check by store path)
         target_path="${cfg.path}"
         if ! $nix_previous profile list 2>/dev/null | grep -qF "$target_path"; then
-          $DRY_RUN_CMD $nix_previous profile install ${cfg.path}
+          $DRY_RUN_CMD $nix_previous profile add ${cfg.path}
         fi
 
         unset nix_previous pkgs_to_remove
