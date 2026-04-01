@@ -1,8 +1,8 @@
 # Copyright (c) 2019-2022, see AUTHORS. Licensed under MIT License, see LICENSE.
-
-{ nixpkgs, system }:
-
-let
+{
+  nixpkgs,
+  system,
+}: let
   pkgs = nixpkgs.legacyPackages.${system};
 
   runtimePackages = with pkgs; [
@@ -18,13 +18,12 @@ let
     rsync
   ];
 in
-
-pkgs.runCommand
+  pkgs.runCommand
   "deploy"
-{
-  preferLocalBuild = true;
-  allowSubstitutes = false;
-}
+  {
+    preferLocalBuild = true;
+    allowSubstitutes = false;
+  }
   ''
     install -D -m755  ${./deploy.sh} $out
 

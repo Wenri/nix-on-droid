@@ -1,6 +1,4 @@
-_:
-
-{
+_: {
   system.stateVersion = "24.05";
   terminal.colors = {
     background = "#FFFFFF";

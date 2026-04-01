@@ -1,14 +1,13 @@
 # Copyright (c) 2019-2024, see AUTHORS. Licensed under MIT License, see LICENSE.
-
-{ stdenvNoCC
-, fetchFromGitHub
-, autoreconfHook
-, makeWrapper
-, gnused
-, getopt
-, termux-am
+{
+  stdenvNoCC,
+  fetchFromGitHub,
+  autoreconfHook,
+  makeWrapper,
+  gnused,
+  getopt,
+  termux-am,
 }:
-
 stdenvNoCC.mkDerivation rec {
   name = "termux-tools";
   version = "1.42.4";
@@ -18,11 +17,11 @@ stdenvNoCC.mkDerivation rec {
     rev = "v${version}";
     sha256 = "sha256-LkkeaEQcY8HgunBYAg3Ymn5xYPvrGqGNCZTd/NyIOKY=";
   };
-  nativeBuildInputs = [ autoreconfHook makeWrapper ];
-  propagatedInputs = [ termux-am ];
+  nativeBuildInputs = [autoreconfHook makeWrapper];
+  propagatedInputs = [termux-am];
 
   # https://github.com/termux/termux-tools/pull/95
-  patches = [ ./termux-tools.patch ];
+  patches = [./termux-tools.patch];
   postPatch = ''
     substituteInPlace scripts/termux-setup-storage.in \
       --replace @TERMUX_HOME@ /data/data/com.termux.nix/files/home/ \

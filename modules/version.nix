@@ -1,15 +1,14 @@
 # Copyright (c) 2019-2024, see AUTHORS. Licensed under MIT License, see LICENSE.
-
-{ config, lib, pkgs, ... }:
-
-with lib;
-
 {
-
+  config,
+  lib,
+  pkgs,
+  ...
+}:
+with lib; {
   ###### interface
 
   options = {
-
     system.stateVersion = mkOption {
       type = types.enum [
         "19.09"
@@ -38,7 +37,5 @@ with lib;
         conversion or moving files.
       '';
     };
-
   };
-
 }

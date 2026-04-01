@@ -1,21 +1,18 @@
 # Copyright (c) 2019-2022, see AUTHORS. Licensed under MIT License, see LICENSE.
-
 # Based on
 # https://github.com/NixOS/nixpkgs/blob/master/nixos/modules/services/misc/nix-daemon.nix
 # (Copyright (c) 2003-2022 Eelco Dolstra and the Nixpkgs/NixOS contributors,
 # licensed under MIT License as well)
-
-{ config, lib, pkgs, ... }:
-
-with lib;
-
-let
-  cfg = config.nix;
-  renameNixOpt = old: new:
-    (mkRenamedOptionModule [ "nix" old ] [ "nix" new ]);
-in
-
 {
+  config,
+  lib,
+  pkgs,
+  ...
+}:
+with lib; let
+  cfg = config.nix;
+  renameNixOpt = old: new: (mkRenamedOptionModule ["nix" old] ["nix" new]);
+in {
   # Backward-compatibility with the NixOS options.
   imports = [
     (renameNixOpt "binaryCaches" "substituters")
@@ -26,7 +23,6 @@ in
   ###### interface
 
   options = {
-
     nix = {
       package = mkOption {
         type = types.package;
@@ -39,7 +35,7 @@ in
 
       nixPath = mkOption {
         type = types.listOf types.str;
-        default = [ ];
+        default = [];
         description = ''
           The default Nix expression search path, used by the Nix
           evaluator to look up paths enclosed in angle brackets
@@ -50,63 +46,78 @@ in
       registry = mkOption {
         type = types.attrsOf (types.submodule (
           let
-            referenceAttrs = with types; attrsOf (oneOf [
-              str
-              int
-              bool
-              package
-            ]);
+            referenceAttrs = with types;
+              attrsOf (oneOf [
+                str
+                int
+                bool
+                package
+              ]);
           in
-          { config, name, ... }:
-          {
-            options = {
-              from = mkOption {
-                type = referenceAttrs;
-                example = { type = "indirect"; id = "nixpkgs"; };
-                description = "The flake reference to be rewritten.";
+            {
+              config,
+              name,
+              ...
+            }: {
+              options = {
+                from = mkOption {
+                  type = referenceAttrs;
+                  example = {
+                    type = "indirect";
+                    id = "nixpkgs";
+                  };
+                  description = "The flake reference to be rewritten.";
+                };
+                to = mkOption {
+                  type = referenceAttrs;
+                  example = {
+                    type = "github";
+                    owner = "my-org";
+                    repo = "my-nixpkgs";
+                  };
+                  description = "The flake reference <option>from</option> is rewritten to.";
+                };
+                flake = mkOption {
+                  type = types.nullOr types.attrs;
+                  default = null;
+                  example = literalExpression "nixpkgs";
+                  description = ''
+                    The flake input <option>from</option> is rewritten to.
+                  '';
+                };
+                exact = mkOption {
+                  type = types.bool;
+                  default = true;
+                  description = ''
+                    Whether the <option>from</option> reference needs to match exactly. If set,
+                    a <option>from</option> reference like <literal>nixpkgs</literal> does not
+                    match with a reference like <literal>nixpkgs/nixos-20.03</literal>.
+                  '';
+                };
               };
-              to = mkOption {
-                type = referenceAttrs;
-                example = { type = "github"; owner = "my-org"; repo = "my-nixpkgs"; };
-                description = "The flake reference <option>from</option> is rewritten to.";
+              config = {
+                from = mkDefault {
+                  type = "indirect";
+                  id = name;
+                };
+                to = mkIf (config.flake != null) (mkDefault
+                  {
+                    type = "path";
+                    path = config.flake.outPath;
+                  }
+                  // filterAttrs
+                  (n: _: n == "lastModified" || n == "rev" || n == "revCount" || n == "narHash")
+                  config.flake);
               };
-              flake = mkOption {
-                type = types.nullOr types.attrs;
-                default = null;
-                example = literalExpression "nixpkgs";
-                description = ''
-                  The flake input <option>from</option> is rewritten to.
-                '';
-              };
-              exact = mkOption {
-                type = types.bool;
-                default = true;
-                description = ''
-                  Whether the <option>from</option> reference needs to match exactly. If set,
-                  a <option>from</option> reference like <literal>nixpkgs</literal> does not
-                  match with a reference like <literal>nixpkgs/nixos-20.03</literal>.
-                '';
-              };
-            };
-            config = {
-              from = mkDefault { type = "indirect"; id = name; };
-              to = mkIf (config.flake != null) (mkDefault
-                {
-                  type = "path";
-                  path = config.flake.outPath;
-                } // filterAttrs
-                (n: _: n == "lastModified" || n == "rev" || n == "revCount" || n == "narHash")
-                config.flake);
-            };
-          }
+            }
         ));
-        default = { };
+        default = {};
         description = "A system-wide flake registry.";
       };
 
       substituters = mkOption {
         type = types.listOf types.str;
-        default = [ ];
+        default = [];
         description = ''
           A list of URLs of substituters.  The official NixOS and Nix-on-Droid
           substituters are added by default.
@@ -115,7 +126,7 @@ in
 
       trustedPublicKeys = mkOption {
         type = types.listOf types.str;
-        default = [ ];
+        default = [];
         description = ''
           A list of public keys.  When paths are copied from another Nix store (such as a
           binary cache), they must be signed with one of these keys.  The official NixOS
@@ -129,9 +140,7 @@ in
         description = "Extra config to be appended to <filename>/etc/nix/nix.conf</filename>.";
       };
     };
-
   };
-
 
   ###### implementation
 
@@ -147,7 +156,7 @@ in
 
         "nix/registry.json".text = builtins.toJSON {
           version = 2;
-          flakes = mapAttrsToList (_n: v: { inherit (v) from to exact; }) cfg.registry;
+          flakes = mapAttrsToList (_n: v: {inherit (v) from to exact;}) cfg.registry;
         };
       };
 
@@ -163,9 +172,8 @@ in
       };
     }
 
-    (mkIf (cfg.nixPath != [ ]) {
+    (mkIf (cfg.nixPath != []) {
       environment.sessionVariables.NIX_PATH = concatStringsSep ":" cfg.nixPath;
     })
   ];
-
 }

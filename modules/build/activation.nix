@@ -1,10 +1,11 @@
 # Copyright (c) 2019-2022, see AUTHORS. Licensed under MIT License, see LICENSE.
-
-{ config, lib, pkgs, ... }:
-
-with lib;
-
-let
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
+with lib; let
   cfg = config.build;
 
   profileDirectory = "/nix/var/nix/profiles/nix-on-droid";
@@ -14,14 +15,15 @@ let
   # and is already patched for Android glibc via replaceAndroidDependencies
   activationBinPaths = "${config.environment.path}/bin";
 
-  mkActivationCmds = activation: concatStringsSep "\n" (
-    mapAttrsToList
+  mkActivationCmds = activation:
+    concatStringsSep "\n" (
+      mapAttrsToList
       (name: value: ''
         noteEcho "Activating ${name}"
         ${value}
       '')
       activation
-  );
+    );
 
   # Use bash from the patched environment
   activationScript = pkgs.writeScript "activation-script" ''
@@ -64,39 +66,41 @@ let
     falling back to <code>true</code>. So it can be used like
     <code>$VERBOSE_ECHO "any message"</code>.
   '';
-in
-
-{
-
+in {
   ###### interface
 
   options = {
-
     build = {
       activation = mkOption {
-        default = { };
+        default = {};
         type = types.attrs;
-        description = ''
-          Activation scripts for the Nix-on-Droid environment.
-        '' + activationOptionDescriptionSuffix;
+        description =
+          ''
+            Activation scripts for the Nix-on-Droid environment.
+          ''
+          + activationOptionDescriptionSuffix;
       };
 
       activationBefore = mkOption {
-        default = { };
+        default = {};
         type = types.attrs;
-        description = ''
-          Activation scripts for the Nix-on-Droid environment that
-          need to be run first.
-        '' + activationOptionDescriptionSuffix;
+        description =
+          ''
+            Activation scripts for the Nix-on-Droid environment that
+            need to be run first.
+          ''
+          + activationOptionDescriptionSuffix;
       };
 
       activationAfter = mkOption {
-        default = { };
+        default = {};
         type = types.attrs;
-        description = ''
-          Activation scripts for the Nix-on-Droid environment that
-          need to be run last.
-        '' + activationOptionDescriptionSuffix;
+        description =
+          ''
+            Activation scripts for the Nix-on-Droid environment that
+            need to be run last.
+          ''
+          + activationOptionDescriptionSuffix;
       };
 
       activationPackage = mkOption {
@@ -121,14 +125,11 @@ in
         '';
       };
     };
-
   };
-
 
   ###### implementation
 
   config = {
-
     build = {
       activationAfter.linkProfile = ''
         generationDir="$(dirname $0)"
@@ -148,28 +149,26 @@ in
 
       activationPackage =
         pkgs.runCommand
-          "nix-on-droid-generation"
-          {
-            preferLocalBuild = true;
-            allowSubstitutes = false;
-          }
-          ''
-            mkdir --parents $out/filesystem/{bin,usr/{bin,lib}}
+        "nix-on-droid-generation"
+        {
+          preferLocalBuild = true;
+          allowSubstitutes = false;
+        }
+        ''
+          mkdir --parents $out/filesystem/{bin,usr/{bin,lib}}
 
-            cp ${activationScript} $out/activate
+          cp ${activationScript} $out/activate
 
-            ln --symbolic ${config.build.etc}/etc $out/etc
-            ln --symbolic ${config.environment.path} $out/nix-on-droid-path
+          ln --symbolic ${config.build.etc}/etc $out/etc
+          ln --symbolic ${config.environment.path} $out/nix-on-droid-path
 
-            ln --symbolic ${config.environment.files.login} $out/filesystem/bin/login
-            ln --symbolic ${config.environment.files.loginInner} $out/filesystem/usr/lib/login-inner
-            ln --symbolic ${config.environment.files.prootStatic}/bin/proot-static $out/filesystem/bin/proot-static
+          ln --symbolic ${config.environment.files.login} $out/filesystem/bin/login
+          ln --symbolic ${config.environment.files.loginInner} $out/filesystem/usr/lib/login-inner
+          ln --symbolic ${config.environment.files.prootStatic}/bin/proot-static $out/filesystem/bin/proot-static
 
-            ln --symbolic ${config.environment.binSh} $out/filesystem/bin/sh
-            ln --symbolic ${config.environment.usrBinEnv} $out/filesystem/usr/bin/env
-          '';
+          ln --symbolic ${config.environment.binSh} $out/filesystem/bin/sh
+          ln --symbolic ${config.environment.usrBinEnv} $out/filesystem/usr/bin/env
+        '';
     };
-
   };
-
 }

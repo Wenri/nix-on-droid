@@ -1,8 +1,9 @@
 # Copyright (c) 2019-2024, see AUTHORS. Licensed under MIT License, see LICENSE.
-
-{ config, lib, ... }:
-
 {
+  config,
+  lib,
+  ...
+}: {
   config.build.activationAfter =
     # TODO: remove when we stop supporting upgrades from <21.11
     # Setups upgraded to 21.11 don't have the /dev/shm directory bootstrapped:

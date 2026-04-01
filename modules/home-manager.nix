@@ -1,42 +1,42 @@
 # Copyright (c) 2019-2022, see AUTHORS. Licensed under MIT License, see LICENSE.
-
-{ config, lib, pkgs, home-manager-path, ... }:
-
-with lib;
-
-let
+{
+  config,
+  lib,
+  pkgs,
+  home-manager-path,
+  ...
+}:
+with lib; let
   cfg = config.home-manager;
 
   extendedLib = import (home-manager-path + "/modules/lib/stdlib-extended.nix") lib;
 
   hmModule = types.submoduleWith {
-    specialArgs = { lib = extendedLib; } // cfg.extraSpecialArgs;
-    modules = [
-      ({ name, ... }: {
-        imports = import (home-manager-path + "/modules/modules.nix") {
-          inherit pkgs;
-          lib = extendedLib;
-          useNixpkgsModule = !cfg.useGlobalPkgs;
-        };
+    specialArgs = {lib = extendedLib;} // cfg.extraSpecialArgs;
+    modules =
+      [
+        ({name, ...}: {
+          imports = import (home-manager-path + "/modules/modules.nix") {
+            inherit pkgs;
+            lib = extendedLib;
+            useNixpkgsModule = !cfg.useGlobalPkgs;
+          };
 
-        config = {
-          submoduleSupport.enable = true;
-          submoduleSupport.externalPackageInstall = cfg.useUserPackages;
+          config = {
+            submoduleSupport.enable = true;
+            submoduleSupport.externalPackageInstall = cfg.useUserPackages;
 
-          home.username = config.user.userName;
-          home.homeDirectory = config.user.home;
-        };
-      })
-    ] ++ cfg.sharedModules;
+            home.username = config.user.userName;
+            home.homeDirectory = config.user.home;
+          };
+        })
+      ]
+      ++ cfg.sharedModules;
   };
-in
-
-{
-
+in {
   ###### interface
 
   options = {
-
     home-manager = {
       backupFileExtension = mkOption {
         type = types.nullOr types.str;
@@ -61,7 +61,7 @@ in
 
       extraSpecialArgs = mkOption {
         type = types.attrs;
-        default = { };
+        default = {};
         example = literalExpression "{ inherit emacs-overlay; }";
         description = ''
           Extra <literal>specialArgs</literal> passed to Home Manager. This
@@ -71,7 +71,7 @@ in
 
       sharedModules = mkOption {
         type = with types; listOf raw;
-        default = [ ];
+        default = [];
         example = literalExpression "[ { home.packages = [ nixpkgs-fmt ]; } ]";
         description = ''
           Extra modules.
@@ -84,21 +84,20 @@ in
         options <option>nixpkgs.*</option>
       '';
 
-      useUserPackages = mkEnableOption ''
-        installation of user packages through the
-        <option>environment.packages</option> option.
-      '' // {
-        default = versionAtLeast config.system.stateVersion "20.09";
-      };
+      useUserPackages =
+        mkEnableOption ''
+          installation of user packages through the
+          <option>environment.packages</option> option.
+        ''
+        // {
+          default = versionAtLeast config.system.stateVersion "20.09";
+        };
     };
-
   };
-
 
   ###### implementation
 
   config = mkIf (cfg.config != null) {
-
     inherit (cfg.config) assertions warnings;
 
     build = {
@@ -125,9 +124,9 @@ in
 
       activationAfter.homeManager = concatStringsSep " " (
         optional
-          (cfg.backupFileExtension != null)
-          "HOME_MANAGER_BACKUP_EXT='${cfg.backupFileExtension}'"
-        ++ [ "${cfg.config.home.activationPackage}/activate" ]
+        (cfg.backupFileExtension != null)
+        "HOME_MANAGER_BACKUP_EXT='${cfg.backupFileExtension}'"
+        ++ ["${cfg.config.home.activationPackage}/activate"]
       );
     };
 
@@ -140,6 +139,5 @@ in
     environment.etc = mkIf cfg.useUserPackages {
       "profiles/per-user/${config.user.userName}".source = "${config.user.home}/.nix-profile";
     };
-
   };
 }

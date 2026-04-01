@@ -1,12 +1,11 @@
 # Copyright (c) 2019-2024, see AUTHORS. Licensed under MIT License, see LICENSE.
-
-{ stdenv
-, fetchFromGitHub
-, talloc
-, static ? true
-, outputBinaryName ? "proot-static"
+{
+  stdenv,
+  fetchFromGitHub,
+  talloc,
+  static ? true,
+  outputBinaryName ? "proot-static",
 }:
-
 stdenv.mkDerivation {
   pname = "proot-termux";
   version = "unstable-2024-05-04";
@@ -35,12 +34,20 @@ stdenv.mkDerivation {
       ""
     ! (grep -F '#define HAS_LOADER_32BIT' src/arch.h)
   '';
-  buildInputs = [ talloc ];
-  patches = [ ./detranslate-empty.patch ];
-  makeFlags = [ "-Csrc" "V=1" ];
-  CFLAGS = [ "-O3" "-I../fake-ashmem" ] ++
-    (if static then [ "-static" ] else [ ]);
-  LDFLAGS = if static then [ "-static" ] else [ ];
+  buildInputs = [talloc];
+  patches = [./detranslate-empty.patch];
+  makeFlags = ["-Csrc" "V=1"];
+  CFLAGS =
+    ["-O3" "-I../fake-ashmem"]
+    ++ (
+      if static
+      then ["-static"]
+      else []
+    );
+  LDFLAGS =
+    if static
+    then ["-static"]
+    else [];
   preInstall = "${stdenv.cc.targetPrefix}strip src/proot";
   installPhase = "install -D -m 0755 src/proot $out/bin/${outputBinaryName}";
 }

@@ -1,10 +1,11 @@
 # Copyright (c) 2019-2024, see AUTHORS. Licensed under MIT License, see LICENSE.
-
-{ config, lib, pkgs, ... }:
-
-with lib;
-
-let
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
+with lib; let
   cfg = config.environment;
 
   export = n: v: "export ${n}=\"${toString v}\"";
@@ -41,14 +42,10 @@ let
       ${exportAll cfg.sessionVariables}
     '';
   };
-in
-
-{
-
+in {
   ###### interface
 
   options = {
-
     environment = {
       motd = mkOption {
         default = ''
@@ -62,9 +59,12 @@ in
       };
 
       sessionVariables = mkOption {
-        default = { };
+        default = {};
         type = types.attrs;
-        example = { EDITOR = "emacs"; GS_OPTIONS = "-sPAPERSIZE=a4"; };
+        example = {
+          EDITOR = "emacs";
+          GS_OPTIONS = "-sPAPERSIZE=a4";
+        };
         description = ''
           Environment variables to always set at login.
 
@@ -105,18 +105,15 @@ in
         '';
       };
     };
-
   };
-
 
   ###### implementation
 
   config = {
-
-    build = { inherit sessionInit; };
+    build = {inherit sessionInit;};
 
     environment = {
-      packages = [ sessionInit ];
+      packages = [sessionInit];
 
       sessionVariables = {
         HOME = config.user.home;
@@ -130,7 +127,5 @@ in
         LOCALE_ARCHIVE = "${config.build.installationDir}${pkgs.glibcLocales}/lib/locale/locale-archive";
       };
     };
-
   };
-
 }

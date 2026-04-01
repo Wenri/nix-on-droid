@@ -16,8 +16,12 @@
     };
   };
 
-  outputs = { self, nixpkgs, home-manager, nix-on-droid }: {
-
+  outputs = {
+    self,
+    nixpkgs,
+    home-manager,
+    nix-on-droid,
+  }: {
     nixOnDroidConfigurations.default = nix-on-droid.lib.nixOnDroidConfiguration {
       modules = [
         ./nix-on-droid.nix
@@ -48,6 +52,5 @@
       # set path to home-manager flake
       home-manager-path = home-manager.outPath;
     };
-
   };
 }

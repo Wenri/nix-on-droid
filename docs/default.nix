@@ -1,9 +1,10 @@
 # Copyright (c) 2019-2024, see AUTHORS. Licensed under MIT License, see LICENSE.
-
-{ pkgs, home-manager, nmdSrc }:
-
-let
-  nmd = import nmdSrc { inherit pkgs; };
+{
+  pkgs,
+  home-manager,
+  nmdSrc,
+}: let
+  nmd = import nmdSrc {inherit pkgs;};
 
   # Make sure the used package is scrubbed to avoid actually instantiating
   # derivations.
@@ -11,7 +12,7 @@ let
     _module.args.pkgs = pkgs.lib.mkForce (nmd.scrubDerivations "pkgs" pkgs);
 
     system.stateVersion = "19.09";
-    home-manager.sharedModules = [ (_: { home.stateVersion = "24.05"; }) ];
+    home-manager.sharedModules = [(_: {home.stateVersion = "24.05";})];
   };
 
   modules = import ../modules/module-list.nix {
@@ -22,8 +23,8 @@ let
   };
 
   modulesDocs = nmd.buildModulesDocs {
-    modules = modules ++ [ setupModule ];
-    moduleRootPaths = [ ../. ];
+    modules = modules ++ [setupModule];
+    moduleRootPaths = [../.];
     mkModuleUrl = path: "https://github.com/nix-community/nix-on-droid/blob/master/${path}";
     channelName = "nix-on-droid";
     docBook.id = "nix-on-droid-options";
@@ -31,7 +32,7 @@ let
 
   docs = nmd.buildDocBookDocs {
     pathName = "nix-on-droid";
-    modulesDocs = [ modulesDocs ];
+    modulesDocs = [modulesDocs];
     documentsDirectory = ./.;
     chunkToc = ''
       <toc>
@@ -41,9 +42,7 @@ let
       </toc>
     '';
   };
-in
-
-{
+in {
   inherit (docs) manPages;
 
   optionsJson = pkgs.symlinkJoin {

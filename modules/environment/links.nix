@@ -1,19 +1,16 @@
 # Copyright (c) 2019-2022, see AUTHORS. Licensed under MIT License, see LICENSE.
-
-{ config, lib, pkgs, ... }:
-
-with lib;
-
-let
-  cfg = config.environment;
-in
-
 {
-
+  config,
+  lib,
+  pkgs,
+  ...
+}:
+with lib; let
+  cfg = config.environment;
+in {
   ###### interface
 
   options = {
-
     environment = {
       binSh = mkOption {
         type = types.str;
@@ -27,14 +24,11 @@ in
         description = "Path to <filename>/usr/bin/env</filename> executable.";
       };
     };
-
   };
-
 
   ###### implementation
 
   config = {
-
     build.activationBefore = {
       linkBinSh = ''
         $DRY_RUN_CMD mkdir $VERBOSE_ARG --parents /bin
@@ -54,7 +48,5 @@ in
       binSh = "${config.build.patchedPkgs.bashInteractive}/bin/sh";
       usrBinEnv = "${config.build.patchedPkgs.coreutils}/bin/env";
     };
-
   };
-
 }

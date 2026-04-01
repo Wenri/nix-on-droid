@@ -1,6 +1,9 @@
-{ config, lib, pkgs, ... }:
-
 {
+  config,
+  lib,
+  pkgs,
+  ...
+}: {
   # Simply install just the packages
   environment.packages = with pkgs; [
     # User-facing stuff that you really really want to have
@@ -45,13 +48,16 @@
     backupFileExtension = "hm-bak";
     useGlobalPkgs = true;
 
-    config =
-      { config, lib, pkgs, ... }:
-      {
-        # Read the changelog before changing this value
-        home.stateVersion = "24.05";
+    config = {
+      config,
+      lib,
+      pkgs,
+      ...
+    }: {
+      # Read the changelog before changing this value
+      home.stateVersion = "24.05";
 
-        # insert home-manager config
-      };
+      # insert home-manager config
+    };
   };
 }

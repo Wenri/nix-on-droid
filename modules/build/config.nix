@@ -1,15 +1,14 @@
 # Copyright (c) 2019-2024, see AUTHORS. Licensed under MIT License, see LICENSE.
-
-{ config, lib, pkgs, ... }:
-
-with lib;
-
 {
-
+  config,
+  lib,
+  pkgs,
+  ...
+}:
+with lib; {
   ###### interface
 
   options = {
-
     build = {
       initialBuild = mkOption {
         type = types.bool;
@@ -31,7 +30,7 @@ with lib;
 
       extraProotOptions = mkOption {
         type = types.listOf types.str;
-        default = [ ];
+        default = [];
         description = "Extra options passed to proot, e.g., extra bind mounts.";
       };
 
@@ -76,18 +75,13 @@ with lib;
         '';
       };
     };
-
   };
-
 
   ###### implementation
 
   config = {
-
     # Canonical source of truth for nix-on-droid installation directory
     # Other modules should use config.build.installationDir
     build.installationDir = "/data/data/com.termux.nix/files/usr";
-
   };
-
 }

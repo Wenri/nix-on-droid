@@ -1,17 +1,17 @@
 # Copyright (c) 2019-2024, see AUTHORS. Licensed under MIT License, see LICENSE.
-{ config
-, lib
-, pkgs
-, ...
+{
+  config,
+  lib,
+  pkgs,
+  ...
 }:
 with lib; let
   cfg = config.terminal;
   validColornames =
-    [ "background" "foreground" "cursor" ] ++
-    (builtins.map (n: "color${builtins.toString n}") (lib.lists.range 0 15));
+    ["background" "foreground" "cursor"]
+    ++ (builtins.map (n: "color${builtins.toString n}") (lib.lists.range 0 15));
   validColorname = colorName: builtins.elem colorName validColornames;
-in
-{
+in {
   ###### interface
 
   options = {
@@ -21,13 +21,13 @@ in
         type = types.nullOr types.path;
         example =
           lib.literalExpression
-            ''"''${pkgs.terminus_font_ttf}/share/fonts/truetype/TerminusTTF.ttf"'';
+          ''"''${pkgs.terminus_font_ttf}/share/fonts/truetype/TerminusTTF.ttf"'';
         description = ''
           Font used for the terminal.
         '';
       };
       colors = mkOption {
-        default = { };
+        default = {};
         type = types.lazyAttrsOf types.str;
         example = lib.literalExpression ''
           {
@@ -48,34 +48,35 @@ in
   ###### implementation
 
   config = {
-    assertions = [{
-      assertion = builtins.all validColorname (attrNames cfg.colors);
-      message = ''
-        `terminal.colors` only accepts the following attributes:
-        `background`, `foreground`, `cursor` and `color0`-`color15`.
-      '';
-    }];
+    assertions = [
+      {
+        assertion = builtins.all validColorname (attrNames cfg.colors);
+        message = ''
+          `terminal.colors` only accepts the following attributes:
+          `background`, `foreground`, `cursor` and `color0`-`color15`.
+        '';
+      }
+    ];
 
-    build.activation =
-      let
-        fontPath =
-          if (lib.strings.hasPrefix "/nix" cfg.font)
-          then "${config.build.installationDir}/${cfg.font}"
-          else cfg.font;
-        configDir = "${config.user.home}/.termux";
-        fontTarget = "${configDir}/font.ttf";
-        fontBackup = "${configDir}/font.ttf.bak";
+    build.activation = let
+      fontPath =
+        if (lib.strings.hasPrefix "/nix" cfg.font)
+        then "${config.build.installationDir}/${cfg.font}"
+        else cfg.font;
+      configDir = "${config.user.home}/.termux";
+      fontTarget = "${configDir}/font.ttf";
+      fontBackup = "${configDir}/font.ttf.bak";
 
-        inherit (lib.generators) toKeyValue;
+      inherit (lib.generators) toKeyValue;
 
-        colors = pkgs.writeTextFile {
-          name = "colors.properties";
-          text = toKeyValue { } cfg.colors;
-        };
-        colorsTarget = "${configDir}/colors.properties";
-        colorsBackup = "${configDir}/colors.properties.bak";
-        colorsPath = "${config.build.installationDir}/${colors}";
-      in
+      colors = pkgs.writeTextFile {
+        name = "colors.properties";
+        text = toKeyValue {} cfg.colors;
+      };
+      colorsTarget = "${configDir}/colors.properties";
+      colorsBackup = "${configDir}/colors.properties.bak";
+      colorsPath = "${config.build.installationDir}/${colors}";
+    in
       (
         if (cfg.font != null)
         then {
@@ -106,7 +107,7 @@ in
         }
       )
       // (
-        if (cfg.colors != { })
+        if (cfg.colors != {})
         then {
           linkColors = ''
             $DRY_RUN_CMD mkdir $VERBOSE_ARG -p "${configDir}"

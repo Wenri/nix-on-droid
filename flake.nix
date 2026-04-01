@@ -28,132 +28,141 @@
     };
   };
 
-  outputs = { self, nixpkgs, nixpkgs-for-bootstrap, home-manager, nix-formatter-pack, nmd, nixpkgs-docs }:
-    let
-      forEachSystem = nixpkgs.lib.genAttrs [ "aarch64-linux" "x86_64-linux" ];
+  outputs = {
+    self,
+    nixpkgs,
+    nixpkgs-for-bootstrap,
+    home-manager,
+    nix-formatter-pack,
+    nmd,
+    nixpkgs-docs,
+  }: let
+    forEachSystem = nixpkgs.lib.genAttrs ["aarch64-linux" "x86_64-linux"];
 
-      overlay = nixpkgs.lib.composeManyExtensions (import ./overlays);
+    overlay = nixpkgs.lib.composeManyExtensions (import ./overlays);
 
-      formatterPackArgsFor = forEachSystem (system: {
-        inherit nixpkgs system;
-        checkFiles = [ ./. ];
+    formatterPackArgsFor = forEachSystem (system: {
+      inherit nixpkgs system;
+      checkFiles = [./.];
 
-        config.tools = {
-          deadnix = {
-            enable = true;
-            noLambdaPatternNames = true;
-          };
-          nixpkgs-fmt.enable = true;
-          statix.enable = true;
+      config.tools = {
+        deadnix = {
+          enable = true;
+          noLambdaPatternNames = true;
         };
-      });
-    in
-    {
-      apps = forEachSystem (system: {
-        default = self.apps.${system}.nix-on-droid;
+        nixpkgs-fmt.enable = true;
+        statix.enable = true;
+      };
+    });
+  in {
+    apps = forEachSystem (system: {
+      default = self.apps.${system}.nix-on-droid;
 
-        nix-on-droid = {
-          type = "app";
-          program = "${self.packages.${system}.nix-on-droid}/bin/nix-on-droid";
+      nix-on-droid = {
+        type = "app";
+        program = "${self.packages.${system}.nix-on-droid}/bin/nix-on-droid";
+      };
+
+      deploy = {
+        type = "app";
+        program = toString (import ./scripts/deploy.nix {inherit nixpkgs system;});
+      };
+    });
+
+    checks = forEachSystem (system: {
+      nix-formatter-pack-check = nix-formatter-pack.lib.mkCheck formatterPackArgsFor.${system};
+    });
+
+    formatter = forEachSystem (system: nix-formatter-pack.lib.mkFormatter formatterPackArgsFor.${system});
+
+    lib.nixOnDroidConfiguration = {
+      pkgs,
+      modules ? [],
+      extraSpecialArgs ? {},
+      home-manager-path ? home-manager.outPath,
+      # deprecated:
+      config ? null,
+      extraModules ? null,
+      system ? null, # pkgs.stdenv.hostPlatform.system is used to detect user's arch
+    }:
+      if ! (builtins.elem pkgs.stdenv.hostPlatform.system ["aarch64-linux" "x86_64-linux"])
+      then
+        throw
+        ("${pkgs.stdenv.hostPlatform.system} is not supported; aarch64-linux / x86_64-linux "
+          + "are the only currently supported system types")
+      else
+        pkgs.lib.throwIf
+        (config != null || extraModules != null || system != null)
+        ''
+          The 'nixOnDroidConfiguration' arguments
+
+          - 'config'
+          - 'extraModules'
+          - 'system'
+
+          have been removed.
+          Instead of 'extraModules' use the argument 'modules'.
+          The 'system' will be inferred by 'pkgs.stdenv.hostPlatform.system',
+          so pass a 'pkgs = import nixpkgs { system = "aarch64-linux"; };'
+          See the 22.11 release notes for more.
+        ''
+        (import ./modules {
+          targetSystem = pkgs.stdenv.hostPlatform.system; # system to cross-compile to
+          inherit extraSpecialArgs home-manager-path pkgs;
+          config.imports = modules;
+          isFlake = true;
+        });
+
+    overlays.default = overlay;
+
+    packages = forEachSystem (
+      system: let
+        flattenArch = arch: derivationAttrset:
+          nixpkgs.lib.attrsets.mapAttrs'
+          (
+            name: drv:
+              nixpkgs.lib.attrsets.nameValuePair (name + "-" + arch) drv
+          )
+          derivationAttrset;
+        perArchCustomPkgs = arch:
+          flattenArch arch
+          (import ./pkgs {
+            _nativeSystem = system; # system to cross-compile from
+            system = "${arch}-linux"; # system to cross-compile to
+            nixpkgs = nixpkgs-for-bootstrap;
+          }).customPkgs;
+
+        docs = import ./docs {
+          inherit home-manager;
+          pkgs = nixpkgs-docs.legacyPackages.${system};
+          nmdSrc = nmd;
         };
-
-        deploy = {
-          type = "app";
-          program = toString (import ./scripts/deploy.nix { inherit nixpkgs system; });
-        };
-      });
-
-      checks = forEachSystem (system: {
-        nix-formatter-pack-check = nix-formatter-pack.lib.mkCheck formatterPackArgsFor.${system};
-      });
-
-      formatter = forEachSystem (system: nix-formatter-pack.lib.mkFormatter formatterPackArgsFor.${system});
-
-      lib.nixOnDroidConfiguration =
-        { pkgs
-        , modules ? [ ]
-        , extraSpecialArgs ? { }
-        , home-manager-path ? home-manager.outPath
-          # deprecated:
-        , config ? null
-        , extraModules ? null
-        , system ? null  # pkgs.stdenv.hostPlatform.system is used to detect user's arch
-        }:
-        if ! (builtins.elem pkgs.stdenv.hostPlatform.system [ "aarch64-linux" "x86_64-linux" ]) then
-          throw
-            ("${pkgs.stdenv.hostPlatform.system} is not supported; aarch64-linux / x86_64-linux " +
-              "are the only currently supported system types")
-        else
-          pkgs.lib.throwIf
-            (config != null || extraModules != null || system != null)
-            ''
-              The 'nixOnDroidConfiguration' arguments
-
-              - 'config'
-              - 'extraModules'
-              - 'system'
-
-              have been removed.
-              Instead of 'extraModules' use the argument 'modules'.
-              The 'system' will be inferred by 'pkgs.stdenv.hostPlatform.system',
-              so pass a 'pkgs = import nixpkgs { system = "aarch64-linux"; };'
-              See the 22.11 release notes for more.
-            ''
-            (import ./modules {
-              targetSystem = pkgs.stdenv.hostPlatform.system; # system to cross-compile to
-              inherit extraSpecialArgs home-manager-path pkgs;
-              config.imports = modules;
-              isFlake = true;
-            });
-
-      overlays.default = overlay;
-
-      packages = forEachSystem (system:
-        let
-          flattenArch = arch: derivationAttrset:
-            nixpkgs.lib.attrsets.mapAttrs'
-              (name: drv:
-                nixpkgs.lib.attrsets.nameValuePair (name + "-" + arch) drv
-              )
-              derivationAttrset;
-          perArchCustomPkgs = arch: flattenArch arch
-            (import ./pkgs {
-              _nativeSystem = system; # system to cross-compile from
-              system = "${arch}-linux"; # system to cross-compile to
-              nixpkgs = nixpkgs-for-bootstrap;
-            }).customPkgs;
-
-          docs = import ./docs {
-            inherit home-manager;
-            pkgs = nixpkgs-docs.legacyPackages.${system};
-            nmdSrc = nmd;
-          };
-        in
+      in
         {
-          nix-on-droid = nixpkgs.legacyPackages.${system}.callPackage ./nix-on-droid { };
+          nix-on-droid = nixpkgs.legacyPackages.${system}.callPackage ./nix-on-droid {};
         }
         // (perArchCustomPkgs "aarch64")
         // (perArchCustomPkgs "x86_64")
         // docs
-      );
+    );
 
-      templates = {
-        default = self.templates.minimal;
+    templates = {
+      default = self.templates.minimal;
 
-        minimal = {
-          path = ./templates/minimal;
-          description = "Minimal example of Nix-on-Droid system config.";
-        };
+      minimal = {
+        path = ./templates/minimal;
+        description = "Minimal example of Nix-on-Droid system config.";
+      };
 
-        home-manager = {
-          path = ./templates/home-manager;
-          description = "Minimal example of Nix-on-Droid system config with home-manager.";
-        };
+      home-manager = {
+        path = ./templates/home-manager;
+        description = "Minimal example of Nix-on-Droid system config with home-manager.";
+      };
 
-        advanced = {
-          path = ./templates/advanced;
-          description = "Advanced example of Nix-on-Droid system config with home-manager.";
-        };
+      advanced = {
+        path = ./templates/advanced;
+        description = "Advanced example of Nix-on-Droid system config with home-manager.";
       };
     };
+  };
 }
