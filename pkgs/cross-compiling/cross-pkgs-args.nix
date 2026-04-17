@@ -1,4 +1,4 @@
-# Copyright (c) 2019-2024, see AUTHORS. Licensed under MIT License, see LICENSE.
+# Copyright (c) 2019-2025, see AUTHORS. Licensed under MIT License, see LICENSE.
 {
   lib,
   config,
@@ -11,7 +11,8 @@ in {
 
   crossSystem = {
     config = "${arch}-unknown-linux-android";
-    sdkVer = "32";
+    androidSdkVersion = "35";
+    androidNdkVersion = "27";
     libc = "bionic";
     useAndroidPrebuilt = false;
     useLLVM = true;
