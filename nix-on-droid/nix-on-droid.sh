@@ -106,7 +106,12 @@ function preFlightSymlinks() {
     local manifest="${generationDir}/symlink-manifest"
     [[ -r "$manifest" ]] || return 0
 
-    local symlinkDir="/data/data/com.termux.nix/nix"
+    # Derive the symlink parent dir from the first manifest entry.  The Nix
+    # side controls `symlinkPrefix` (see common/modules/android/replace-
+    # dependencies.nix); by discovering it here we avoid hard-coding.
+    local symlinkDir
+    symlinkDir=$(awk 'NF{sub(/\/[^/]*$/, "", $1); print $1; exit}' "$manifest")
+    [[ -n "$symlinkDir" ]] || return 0
     mkdir -p "$symlinkDir"
 
     # Install (or update) symlinks for the target generation.
