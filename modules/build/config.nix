@@ -77,7 +77,6 @@ with lib; {
 
       symlinkManifest = mkOption {
         type = types.listOf (types.attrsOf types.str);
-        default = [];
         readOnly = true;
         description = ''
           List of { symlinkPath, targetPath } entries.  The activation
