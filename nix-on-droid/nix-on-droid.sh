@@ -110,11 +110,14 @@ function preFlightSymlinks() {
     mkdir -p "$symlinkDir"
 
     # Install (or update) symlinks for the target generation.
+    # `ln -sfn` atomically replaces an existing symlink (both symlink-to-file
+    # and symlink-to-dir); no tmp+mv dance needed.  Without `-n`, when the
+    # existing entry is a symlink to a directory, ln descends into it and
+    # tries to create the new symlink INSIDE — which fails on read-only /nix.
     while IFS=' ' read -r symlinkPath targetPath; do
         [[ -z "$symlinkPath" ]] && continue
         if [[ "$(readlink "$symlinkPath" 2>/dev/null)" != "$targetPath" ]]; then
-            ln -sfn "$targetPath" "$symlinkPath.tmp"
-            mv "$symlinkPath.tmp" "$symlinkPath"
+            ln -sfn "$targetPath" "$symlinkPath"
         fi
     done < "$manifest"
 
