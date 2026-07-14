@@ -66,6 +66,11 @@ in {
     # Expose patchedPkgs for other modules to use
     build.patchedPkgs = patchedPkgs;
 
+    # Expose symlink manifest for the activation script (see
+    # common/modules/android/replace-dependencies.nix and
+    # submodules/nix-on-droid/nix-on-droid.sh pre-flight step).
+    build.symlinkManifest = patchResult.symlinkManifest;
+
     build.activation.installPackages = ''
       if [[ -e "${config.user.home}/.nix-profile/manifest.json" ]]; then
         # manual removal and installation as two non-atomical steps is required

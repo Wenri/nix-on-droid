@@ -93,6 +93,50 @@ function doOnDeviceTest() {
                             "<nix-on-droid/tests/on-device/.run.sh>")" "$@"
 }
 
+# Pre-flight: install kernel-visible symlinks under /data/data/com.termux.nix/nix/
+# BEFORE the target generation's activate script runs.  The activation script's
+# shebang references the newly patched bash, whose ELF interp is baked to a
+# symlink path under /data/data/com.termux.nix/nix/ — the kernel resolves it
+# before any libc/fakechroot preload gets a chance to run, so the symlinks
+# must exist first.  Also prune stale symlinks not referenced by any retained
+# generation (implicit GC).  Runs under the PREVIOUS generation's shell, whose
+# binaries still work.  Idempotent.
+function preFlightSymlinks() {
+    local generationDir=$1
+    local manifest="${generationDir}/symlink-manifest"
+    [[ -r "$manifest" ]] || return 0
+
+    local symlinkDir="/data/data/com.termux.nix/nix"
+    mkdir -p "$symlinkDir"
+
+    # Install (or update) symlinks for the target generation.
+    while IFS=' ' read -r symlinkPath targetPath; do
+        [[ -z "$symlinkPath" ]] && continue
+        if [[ "$(readlink "$symlinkPath" 2>/dev/null)" != "$targetPath" ]]; then
+            ln -sfn "$targetPath" "$symlinkPath.tmp"
+            mv "$symlinkPath.tmp" "$symlinkPath"
+        fi
+    done < "$manifest"
+
+    # Compute the union of live symlinks across retained generations, then
+    # prune anything else under $symlinkDir.  This reclaims space after
+    # `nix-collect-garbage --delete-old` removes an old generation profile.
+    local liveList
+    liveList=$(mktemp)
+    trap "rm -f $liveList" RETURN
+    for gen in "${PROFILE_DIRECTORY}"-*-link; do
+        [[ -r "${gen}/symlink-manifest" ]] || continue
+        cut -d' ' -f1 "${gen}/symlink-manifest" >> "$liveList"
+    done
+    # Include the incoming generation too (may not yet be linked).
+    cut -d' ' -f1 "$manifest" >> "$liveList"
+
+    # Delete any symlink under $symlinkDir not in the live set.
+    find "$symlinkDir" -mindepth 1 -maxdepth 1 -type l | while read -r existing; do
+        grep -qxF "$existing" "$liveList" || rm -f "$existing"
+    done
+}
+
 function doSwitch() {
     if [[ -e "$HOME/.config/nix-on-droid/flake.nix" && -z "${FLAKE_CONFIG_URI}" ]]; then
         echo -n '~/.config/nix-on-droid/flake.nix exists, '
@@ -106,6 +150,7 @@ function doSwitch() {
     echo "Executing activation script..."
     generationDir="$(nixActivationPackage path-info)"
 
+    preFlightSymlinks "${generationDir}"
     "${generationDir}/activate"
 }
 
@@ -114,6 +159,7 @@ function doSwitchGeneration() {
 
     if [[ -x "${PROFILE_DIRECTORY}-${generationNum}-link/activate" ]]; then
         echo "Executing activation script..."
+        preFlightSymlinks "${PROFILE_DIRECTORY}-${generationNum}-link"
         "${PROFILE_DIRECTORY}-${generationNum}-link/activate"
     else
         errorEcho "Activation was not successful, generation is either broken or already garbage collected."

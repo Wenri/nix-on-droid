@@ -153,11 +153,20 @@ in {
         {
           preferLocalBuild = true;
           allowSubstitutes = false;
+          # Symlink manifest: one line per entry, "symlinkPath targetPath".
+          # Consumed by nix-on-droid.sh pre-flight (creates the kernel-visible
+          # symlinks under /data/data/com.termux.nix/nix/ before the new
+          # generation's activate script — which itself references those
+          # symlink paths in its ELF interp).
+          symlinkManifestLines = builtins.concatStringsSep "\n"
+            (map (e: "${e.symlinkPath} ${e.targetPath}") config.build.symlinkManifest);
+          passAsFile = [ "symlinkManifestLines" ];
         }
         ''
           mkdir --parents $out/filesystem/{bin,usr/{bin,lib}}
 
           cp ${activationScript} $out/activate
+          cp "$symlinkManifestLinesPath" $out/symlink-manifest
 
           ln --symbolic ${config.build.etc}/etc $out/etc
           ln --symbolic ${config.environment.path} $out/nix-on-droid-path

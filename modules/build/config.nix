@@ -74,6 +74,21 @@ with lib; {
           Packages in the memo return their patched version; others return original.
         '';
       };
+
+      symlinkManifest = mkOption {
+        type = types.listOf (types.attrsOf types.str);
+        default = [];
+        readOnly = true;
+        description = ''
+          List of { symlinkPath, targetPath } entries.  The activation
+          wrapper (nix-on-droid.sh) installs kernel-visible symlinks
+          under /data/data/com.termux.nix/nix/ that patched binaries
+          reference at runtime (byte-substituted from /nix/store/*).
+          Enables static ELFs to resolve store paths without libc
+          preload interception.  Emitted as $out/symlink-manifest in
+          the activationPackage.
+        '';
+      };
     };
   };
 
