@@ -55,13 +55,9 @@ in
     # NOTE: We use /system/bin/env to explicitly pass environment variables because
     # Android's /system/bin/sh doesn't properly pass exported variables to exec'd processes.
     #
-    # FAKECHROOT=true is kept deliberately: android-glibc's execve wrapper
-    # re-asserts it with setenv(..., 0) so that `environ' is never NULL, and
-    # the AF_UNIX and debug knobs are still read from the environment.
     exec /system/bin/env \
       USER="$USER" \
       HOME="$HOME" \
-      FAKECHROOT="true" \
       "$LD_LINUX" \
         --argv0 "$BASH_BIN" \
         --library-path "$GLIBC_LIB" \
