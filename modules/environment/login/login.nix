@@ -7,9 +7,9 @@
 }: let
   inherit (config.build) installationDir;
 
-  # Paths for fakechroot login
+  # Paths for login.  Path translation lives in android-glibc itself now, so
+  # there is no interposition library to locate here.
   androidGlibc = config.build.androidGlibc or null;
-  androidFakechroot = config.build.androidFakechroot or null;
   bashInteractive = config.build.bashInteractive or null;
 in
   writeScript "login" ''
@@ -33,19 +33,18 @@ in
       /system/bin/mv ${installationDir}/usr/lib/.login-inner.new ${installationDir}/usr/lib/login-inner
     fi
 
-    # Fakechroot configuration
-    # Android paths are now hardcoded into libfakechroot.so at compile time.
-    # We only need to set FAKECHROOT_BASE for path translation.
-    # Note: /nix/store path translation is built into ld.so (dl-android-paths.h)
+    # Path translation is built into android-glibc: the wrappers live in libc
+    # and the /nix/store rewrite in ld.so (dl-android-paths.h).  Nothing is
+    # preloaded, which is the point -- a preloaded libfakechroot.so would
+    # resolve AHEAD of those wrappers and silently shadow them.
     STORE="${installationDir}/nix/store"
     GLIBC_LIB="$STORE/${baseNameOf androidGlibc}/lib"
     LD_LINUX="$GLIBC_LIB/ld-linux-aarch64.so.1"
     BASH_BIN="$STORE/${baseNameOf bashInteractive}/bin/bash"
-    FAKECHROOT_LIB="$STORE/${baseNameOf androidFakechroot}/lib/fakechroot/libfakechroot.so"
     LOGIN_INNER="${installationDir}/usr/lib/login-inner"
 
     # Verify critical files exist
-    for _file in "$LD_LINUX" "$BASH_BIN" "$FAKECHROOT_LIB" "$LOGIN_INNER"; do
+    for _file in "$LD_LINUX" "$BASH_BIN" "$LOGIN_INNER"; do
       if [ ! -e "$_file" ]; then
         echo "Error: Required file not found: $_file" >&2
         exit 1
@@ -56,9 +55,9 @@ in
     # NOTE: We use /system/bin/env to explicitly pass environment variables because
     # Android's /system/bin/sh doesn't properly pass exported variables to exec'd processes.
     #
-    # All FAKECHROOT_* settings (ELFLOADER, LIBRARY_PATH, PRELOAD, BASE, EXCLUDE_PATH)
-    # are now hardcoded into libfakechroot.so at compile time.
-    # Only FAKECHROOT=true is needed to enable fakechroot mode.
+    # FAKECHROOT=true is kept deliberately: android-glibc's execve wrapper
+    # re-asserts it with setenv(..., 0) so that `environ' is never NULL, and
+    # the AF_UNIX and debug knobs are still read from the environment.
     exec /system/bin/env \
       USER="$USER" \
       HOME="$HOME" \
@@ -66,6 +65,5 @@ in
       "$LD_LINUX" \
         --argv0 "$BASH_BIN" \
         --library-path "$GLIBC_LIB" \
-        --preload "$FAKECHROOT_LIB" \
         "$BASH_BIN" "$LOGIN_INNER" "$@"
   ''
