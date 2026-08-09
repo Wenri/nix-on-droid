@@ -8,6 +8,12 @@
   proot,
   pkgsStatic,
   system,
+  # Extra closureInfo derivations whose store paths are copied into the
+  # directory and db-registered alongside the bootstrap nix + proot.  Lets a
+  # consumer seed a full pre-built system closure into the bootstrap zip
+  # (e.g. a whole nix-on-droid generation), so first boot needs no
+  # substitution or building.
+  extraClosures ? [],
 }: let
   buildRootDirectory = "root-directory";
 
@@ -63,9 +69,20 @@ in
         cp --archive "$i" "${buildRootDirectory}$i"
       done
 
+      ${lib.concatMapStrings (c: ''
+        for i in $(< ${c}/store-paths); do
+          # Store paths may overlap between closures (and with the seed
+          # store); first copy wins, contents are identical by hash.
+          [ -e "${buildRootDirectory}$i" ] || cp --archive "$i" "${buildRootDirectory}$i"
+        done
+      '') extraClosures}
+
       USER=${config.user.userName} ${prootCommand} "/static-nix/bin/nix-store" --init
       USER=${config.user.userName} ${prootCommand} "/static-nix/bin/nix-store" --load-db < .reginfo
       USER=${config.user.userName} ${prootCommand} "/static-nix/bin/nix-store" --load-db < ${prootTermuxClosure}/registration
+      ${lib.concatMapStrings (c: ''
+        USER=${config.user.userName} ${prootCommand} "/static-nix/bin/nix-store" --load-db < ${c}/registration
+      '') extraClosures}
 
       cat > package-info.nix <<EOF
       {

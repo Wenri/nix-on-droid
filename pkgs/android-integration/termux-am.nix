@@ -3,8 +3,12 @@
   stdenv,
   fetchFromGitHub,
   cmake,
+  # Derived from config.build.{installationDir,appId} at the call site;
+  # canonical defaults keep standalone callPackage working.
+  installationDir ? "/data/data/com.termux.nix/files/usr",
+  appId ? "com.termux.nix",
 }: let
-  appPath = "/data/data/com.termux.nix/files/apps/com.termux.nix";
+  appPath = "${builtins.dirOf installationDir}/apps/${appId}";
   socketPath = "${appPath}/termux-am/am.sock";
 in
   stdenv.mkDerivation rec {

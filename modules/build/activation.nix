@@ -155,7 +155,7 @@ in {
           allowSubstitutes = false;
           # Symlink manifest: one line per entry, "symlinkPath targetPath".
           # Consumed by nix-on-droid.sh pre-flight (creates the kernel-visible
-          # symlinks under /data/data/com.termux.nix/nix/ before the new
+          # symlinks under the graft prefix (/data/data/<app id>/@/) before the new
           # generation's activate script — which itself references those
           # symlink paths in its ELF interp).
           symlinkManifestLines = builtins.concatStringsSep "\n"

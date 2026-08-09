@@ -93,10 +93,10 @@ function doOnDeviceTest() {
                             "<nix-on-droid/tests/on-device/.run.sh>")" "$@"
 }
 
-# Pre-flight: install kernel-visible symlinks under /data/data/com.termux.nix/nix/
+# Pre-flight: install kernel-visible symlinks under the graft prefix
 # BEFORE the target generation's activate script runs.  The activation script's
 # shebang references the newly patched bash, whose ELF interp is baked to a
-# symlink path under /data/data/com.termux.nix/nix/ — the kernel resolves it
+# symlink path under the graft prefix (/data/data/<app id>/@/) — the kernel resolves it
 # before any libc/fakechroot preload gets a chance to run, so the symlinks
 # must exist first.  Also prune stale symlinks not referenced by any retained
 # generation (implicit GC).  Runs under the PREVIOUS generation's shell, whose

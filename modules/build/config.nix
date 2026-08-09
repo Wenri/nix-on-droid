@@ -24,8 +24,23 @@ with lib; {
       installationDir = mkOption {
         type = types.path;
         internal = true;
-        readOnly = true;
-        description = "Path to installation directory.";
+        description = ''
+          Path to installation directory: /data/data/<app id>/files/usr.
+          Defaults to the canonical com.termux.nix prefix; a consumer
+          building for an APK with a different application id (installed
+          side by side) overrides this — everything downstream (login,
+          passwd, locale archive, activation) derives from it.
+        '';
+      };
+
+      appId = mkOption {
+        type = types.str;
+        internal = true;
+        description = ''
+          The Android application id this environment lives under.
+          Derived from installationDir; override only if the directory
+          layout ever stops being /data/data/<appId>/files/usr.
+        '';
       };
 
       extraProotOptions = mkOption {
@@ -81,8 +96,9 @@ with lib; {
         description = ''
           List of { symlinkPath, targetPath } entries.  The activation
           wrapper (nix-on-droid.sh) installs kernel-visible symlinks
-          under /data/data/com.termux.nix/nix/ that patched binaries
-          reference at runtime (byte-substituted from /nix/store/*).
+          under the graft prefix (/data/data/<app id>/@/) that patched
+          binaries reference at runtime (byte-substituted from
+          /nix/store/*).
           Enables static ELFs to resolve store paths without libc
           preload interception.  Emitted as $out/symlink-manifest in
           the activationPackage.
@@ -94,8 +110,14 @@ with lib; {
   ###### implementation
 
   config = {
-    # Canonical source of truth for nix-on-droid installation directory
-    # Other modules should use config.build.installationDir
-    build.installationDir = "/data/data/com.termux.nix/files/usr";
+    # Canonical default for the nix-on-droid installation directory.
+    # Other modules should use config.build.installationDir.  mkDefault so
+    # a configuration built for a different APK identity can override it.
+    build.installationDir = mkDefault "/data/data/com.termux.nix/files/usr";
+
+    # /data/data/<appId>/files/usr -> <appId>
+    build.appId = mkDefault (
+      baseNameOf (dirOf (dirOf config.build.installationDir))
+    );
   };
 }

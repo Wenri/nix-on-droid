@@ -7,10 +7,15 @@
 }: let
   cfg = config.android-integration;
 
-  termux-am =
-    pkgs.callPackage (import ../../pkgs/android-integration/termux-am.nix) {};
+  # The receiver components stay in the com.termux Java namespace whatever
+  # the applicationId is (termux-tools' `@TERMUX_APP_PACKAGE@.app ->
+  # com.termux.app` substitution), so only installationDir/appId vary.
+  termux-am = pkgs.callPackage (import ../../pkgs/android-integration/termux-am.nix) {
+    inherit (config.build) installationDir appId;
+  };
   termux-tools = pkgs.callPackage (import ../../pkgs/android-integration/termux-tools.nix) {
     inherit termux-am;
+    inherit (config.build) installationDir appId;
   };
 in {
   ###### interface
